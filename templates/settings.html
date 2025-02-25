@@ -1,0 +1,26 @@
+<!-- [templates/settings.html](templates/settings.html) -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DeepScout Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Settings</h1>
+        <nav>
+            <a href="/">Home</a>
+        </nav>
+    </header>
+    <main>
+        <form action="/save-settings" method="post" class="settings-form">
+            <label for="api_key">Gemini API Key:</label>
+            <input type="text" id="api_key" name="api_key" placeholder="Enter API key">
+            <button type="submit">Save</button>
+        </form>
+    </main>
+    <footer>
+        <p>&copy; DeepScout</p>
+    </footer>
+</body>
+</html>

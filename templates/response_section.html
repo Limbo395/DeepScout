@@ -1,0 +1,39 @@
+<section class="response-section">
+    {% if user_query %}
+    <div class="user-message">
+        <p>{{ user_query }}</p>
+    </div>
+    {% endif %}
+    <div class="ai-response-label">
+        <p>AI response:</p>
+    </div>
+    {% if search_type == 'shallow' %}
+        <div class="gemini-response">
+            {{ gemini_response | convert_markdown | safe }}
+        </div>
+        <h2>Recommended sites:</h2>
+        <ul class="results-list">
+            {% for result in search_results %}
+                <li>
+                    <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16">
+                    <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% elif search_type == 'deep' %}
+        <div class="gemini-response">
+            {{ gemini_report | safe }}
+        </div>
+        {% if pages %}
+        <h2>Visited Sites:</h2>
+        <ul class="visited-sites">
+            {% for page in pages %}
+                <li>
+                    <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                    <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    {% endif %}
+</section>

@@ -1,0 +1,7 @@
+Flask
+selenium
+beautifulsoup4
+SQLAlchemy
+PyQt5
+requests
+google-generativeai

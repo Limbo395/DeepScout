@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DeepScout Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .ai-response-label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        /* CSS for loading overlay and spinner */
+        /* Removed full-screen loading overlay styles */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .ai-loading {
+            font-style: italic;
+            color: #888;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Removed full-screen loading overlay -->
+    <div class="app-header">
+        <div class="app-title">DeepScout</div>
+        <div class="settings-container">
+            <a class="settings-icon" href="/settings">
+                <img src="{{ url_for('static', filename='gear.png') }}" alt="Settings">
+            </a>
+        </div>
+    </div>
+    <main class="page-container">
+        {% if gemini_response or gemini_report or gemini_answer or search_results %}
+        <section class="response-section">
+            <!-- Display user's question if present -->
+            {% if user_query %}
+            <div class="user-message">
+                <p>{{ user_query }}</p>
+            </div>
+            {% endif %}
+            {% if user_question %}
+            <div class="user-message">
+                <p>{{ user_question }}</p>
+            </div>
+            {% endif %}
+            <div class="ai-response-label">
+                <p>AI response:</p>
+            </div>
+            {% if not gemini_response and search_type == 'shallow' %}
+                <div class="ai-loading">Generating response...</div>
+            {% elif not gemini_report and search_type == 'deep' %}
+                <div class="ai-loading">Generating response...</div>
+            {% else %}
+                {% if search_type == 'shallow' %}
+                    <div class="gemini-response">
+                        {{ gemini_response | convert_markdown | safe }}
+                    </div>
+                    <h2>Recommended sites:</h2>
+                    <ul class="results-list">
+                        {% for result in search_results %}
+                            <li>
+                                <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16">
+                                <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% elif search_type == 'deep' %}
+                    <div class="gemini-response">
+                        {{ gemini_report | convert_markdown | safe }}
+                    </div>
+                    {% if pages %}
+                    <h2>Visited Sites:</h2>
+                    <ul class="visited-sites">
+                        {% for page in pages %}
+                            <li>
+                                <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                                <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if gemini_answer %}
+                    <div class="additional-answer">
+                        <h2>Answer to additional question:</h2>
+                        <div class="gemini-response">
+                            {{ gemini_answer | convert_markdown | safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <section class="chat-section">
+            <form action="/search" method="post" class="chat-form">
+                <!-- Mode toggle button -->
+                <button type="button" id="mode-toggle">
+                    <img src="{{ url_for('static', filename='brains.png') }}" alt="Mode">
+                </button>
+                <input type="hidden" name="search_type" id="search_type_input" value="shallow">
+                <textarea name="query" placeholder="Enter query..." rows="3" required></textarea>
+                <!-- Clear Chat button now before send button -->
+                <button type="button" id="clear-chat">
+                    <img src="{{ url_for('static', filename='clear.png') }}" alt="Clear Chat">
+                </button>
+                <button type="submit" id="send-button">→</button>
+            </form>
+        </section>
+        <!-- Modal confirmation popup -->
+        <div id="confirm-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <h2>Confirm Action</h2>
+                <p>Are you sure you want to clear the chat?</p>
+                <button id="confirm-yes">Yes</button>
+                <button id="confirm-cancel">Cancel</button>
+            </div>
+        </div>
+        <script>
+            document.getElementById("mode-toggle").addEventListener("click", function() {
+                var hiddenInput = document.getElementById("search_type_input");
+                if (hiddenInput.value === "shallow") {
+                    hiddenInput.value = "deep";
+                    this.classList.add("active");
+                } else {
+                    hiddenInput.value = "shallow";
+                    this.classList.remove("active");
+                }
+            });
+            document.getElementById("clear-chat").addEventListener("click", function(){
+                // Show modal confirmation dialog
+                document.getElementById("confirm-modal").style.display = "flex";
+            });
+            document.getElementById("confirm-yes").addEventListener("click", function(){
+                var responseSection = document.querySelector(".response-section");
+                if (responseSection) {
+                    responseSection.innerHTML = "";
+                }
+                document.getElementById("confirm-modal").style.display = "none";
+            });
+            document.getElementById("confirm-cancel").addEventListener("click", function(){
+                document.getElementById("confirm-modal").style.display = "none";
+            });
+            // Замінюємо обробник submit на асинхронну версію
+            document.querySelector('.chat-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                var responseSection = document.querySelector(".response-section");
+                if (!responseSection) {
+                    responseSection = document.createElement("section");
+                    responseSection.className = "response-section";
+                    document.querySelector("main").prepend(responseSection);
+                }
+                responseSection.innerHTML = '<div class="ai-loading">Generating response<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>';
+
+                // Відправляємо запит асинхронно
+                const formData = new FormData(this);
+                try {
+                    const response = await fetch('/search', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const html = await response.text();
+                        // Створюємо тимчасовий div для парсингу HTML
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        
+                        // Знаходимо нову response-section в отриманому HTML
+                        const newResponseSection = tempDiv.querySelector('.response-section');
+                        if (newResponseSection) {
+                            responseSection.innerHTML = newResponseSection.innerHTML;
+                        }
+                    } else {
+                        responseSection.innerHTML = '<div class="error">Error occurred while generating response</div>';
+                    }
+                } catch (error) {
+                    responseSection.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+                }
+            });
+        </script>
+    </main>
+</body>
+</html>

@@ -1,0 +1,555 @@
+/* Global minimalistic dark theme */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Header & Navigation */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #333;
+}
+nav a {
+    margin: 0 10px;
+    color: #e0e0e0;
+    text-decoration: none;
+    margin-right: 20px;
+}
+nav a:hover {
+    text-decoration: underline;
+}
+
+/* Updated header styling */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #333;
+}
+
+.main-header .header-left h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.main-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* New minimal header styling */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 20px;
+    background-color: transparent; /* no stripe */
+    border: none;
+}
+.app-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #eee;
+    margin: 0;
+}
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Main content area */
+main {
+    padding: 20px;
+    background: none;
+    padding-bottom: 100px;  /* extra space to avoid overlap from the fixed chat section */
+}
+
+/* Footer styling */
+footer {
+    text-align: center;
+    padding: 10px 20px;
+    background-color: #1e1e1e;
+    color: #fff;
+    margin-top: 20px;
+    border-top: 1px solid #333;
+}
+
+h1, h2 {
+    color: #eee;
+}
+
+a {
+    color: #fff; /* changed from green (#4CAF50) to white */
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+ul {
+    list-style: none; /* Забираємо маркери списку */
+    padding: 0;
+}
+
+li {
+    margin-bottom: 5px;
+}
+
+form {
+    margin-bottom: 20px;
+}
+
+input[type="text"], select, textarea, button {
+    padding: 10px;
+    border: 1px solid #444;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border-radius: 4px; /* Закруглені кути */
+    margin-right: 5px;
+}
+
+button,
+.chat-form button,
+.settings-form button,
+#send-button {
+    background-color: #333 !important; /* Neutral dark grey */
+    border: 1px solid #555;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover,
+.chat-form button:hover,
+.settings-form button:hover,
+#send-button:hover {
+    background-color: #555 !important; /* Lighten on hover */
+}
+
+img {
+    margin-right: 5px;
+    vertical-align: middle; /* Вирівнюємо іконки по вертикалі */
+}
+
+/* Ensure all buttons have a uniform height */
+button, 
+.chat-form button, 
+.settings-form button, 
+#mode-toggle {
+    height: 50px;
+}
+
+/* Form styling */
+.search-form, .settings-form {
+    display: flex;
+    flex-direction: column;
+    max-width: 400px;
+    margin: auto;
+    box-shadow: none;
+}
+
+.search-form input[type="text"],
+.search-form select,
+.search-form button,
+.settings-form input[type="text"],
+.settings-form button {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #555;
+    background-color: #444;
+    color: #fff;
+    border-radius: 4px;
+}
+
+/* Section styling */
+section {
+    margin-bottom: 20px;
+}
+
+/* Chat interface styles */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 20px auto;
+    height: 80vh;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+}
+
+.chat-history {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: #121212;
+}
+
+.chat-form {
+    display: flex;
+    align-items: center; /* vertically center the panel contents */
+    padding: 10px 20px;
+    border-top: 1px solid #333;
+    background: none;
+}
+
+/* Update chat-form textarea for responsiveness */
+.chat-form textarea {
+    flex: 1; /* allows the field to grow & shrink dynamically */
+    height: 60px; /* increased height */
+    font-size: 16px; /* larger font size */
+    resize: none;
+    padding: 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+    margin-right: 10px;
+}
+
+.chat-form button {
+    width: 100px;   /* extended width */
+    padding: 6px 10px;   /* reduced vertical padding */
+    border: none;
+    background-color: #4CAF50;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    text-align: center;
+}
+
+.chat-form button:hover {
+    background-color: #45a049;
+}
+
+/* Customize search option selector for a minimalistic, elegant look */
+.chat-form select {
+    width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #666;
+    background-color: #222;
+    color: #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    appearance: none;
+    transition: background-color 0.3s;
+}
+.chat-form select:hover {
+    background-color: #333;
+}
+chat-form select:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* New layout for single-page answer display */
+.page-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Settings icon in top-right corner */
+.settings-icon {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+}
+.settings-icon img {
+    width: 30px;
+    height: 30px;
+}
+
+/* Response section for full-width answer */
+.response-section {
+    width: 90%;
+    margin: 20px 0;
+    padding: 20px;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+}
+
+/* Update chat section to be fixed at the bottom of the screen */
+.chat-section {
+    position: fixed;
+    bottom: 0;              /* fixed directly at the bottom */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 1000px;
+}
+
+/* Update style for the mode toggle button */
+#mode-toggle {
+    width: 90px;        /* same as send button */
+    height: 50px;       /* same as send button */
+    padding: 5px;
+    border: 1px solid #444;
+    background-color: #222;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: box-shadow 0.3s;
+    margin-right: 10px;  /* space between mode button and textarea */
+}
+#mode-toggle img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+#mode-toggle.active {
+    box-shadow: 0 0 8px white;
+}
+
+/* Remove background color from the send button */
+#send-button {
+    height: 50px;
+    width: 90px;
+    background-color: #4CAF50;
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    text-align: center;
+    transition: background-color 0.3s ease;
+}
+#send-button:hover {
+    background-color: #388E3C;
+}
+
+/* Ensure mode toggle, send, and clear chat buttons have the same size */
+#mode-toggle,
+#send-button,
+#clear-chat {
+    width: 90px;
+    height: 50px;
+    /* Remove extra padding if any */
+    padding: 5px;
+}
+
+/* For image buttons, ensure images fill the container */
+#mode-toggle img,
+#send-button img,
+#clear-chat img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Enhanced styling for Gemini response to render markdown similarly to GitHub README */
+.gemini-response {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #fff;
+    font-size: 18px; /* adjust as preferred */
+    line-height: 1.6;
+}
+.gemini-response h1,
+.gemini-response h2,
+.gemini-response h3 {
+    margin-top: 0;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+.gemini-response p {
+    margin-bottom: 1em;
+}
+.gemini-response blockquote {
+    margin: 1em 0;
+    padding: 10px 20px;
+    border-left: 4px solid #444;
+    background-color: #2a2a2a;
+    color: #ccc;
+    font-style: italic;
+}
+.gemini-response code {
+    background-color: #333;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.95em;
+}
+.gemini-response pre {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: Consolas, Monaco, monospace;
+    margin-bottom: 1em;
+}
+.gemini-response ul {
+    list-style: disc;
+    margin-left: 20px;
+    margin-bottom: 1em;
+}
+.gemini-response ol {
+    list-style: decimal;
+    margin-left: 20px;
+    margin-bottom: 1em;
+}
+
+/* Optionally, set uniform size for clear chat button images */
+#clear-chat {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+#clear-chat img {
+    width: 30px; /* example size */
+    height: 30px;
+    object-fit: contain;
+}
+
+/* Modal popup styling */
+.modal {
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(18, 18, 18, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: #e0e0e0;
+}
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+.modal-content p {
+    margin-bottom: 20px;
+}
+.modal-content button {
+    background-color: #333;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin: 0 5px;
+}
+.modal-content button:hover {
+    background-color: #555;
+}
+
+/* Styling for user chat messages */
+.user-message {
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    max-width: 80%;
+    align-self: flex-end;
+    font-size: 16px;
+    color: #fff;
+    text-align: right;
+}
+
+/* Styling for the AI response label */
+.ai-response-label p {
+    margin: 10px 0;
+    font-weight: bold;
+    color: #ccc;
+    text-align: left;
+}
+
+/* Loading overlay styles */
+/*
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #444;
+    border-top: 5px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+*/
+
+/* Minimalistic spinner animation */
+.dot {
+    display: inline-block;
+    animation: dot 1.5s infinite;
+}
+.dot.dot1 { animation-delay: 0s; }
+.dot.dot2 { animation-delay: 0.5s; }
+.dot.dot3 { animation-delay: 1s; }
+@keyframes dot {
+    0% { opacity: 0; }
+    25% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 0; }
+}
+
+/* Точна копія стилів з прикладу */
+
+/* Видалити всі попередні визначення .ai-loading та @keyframes shimmer */
+
+/* Оновлені стилі для анімації тексту */
+.ai-loading {
+    font-size: 18px;
+    color: #fff;
+}
+
+.dot {
+    opacity: 0;
+    animation: blink 1.4s infinite;
+    margin-left: 2px;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
