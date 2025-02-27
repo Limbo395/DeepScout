@@ -11,6 +11,7 @@ class Search(Base):
     query = Column(Text)
     search_type = Column(Text)
     response = Column(Text)
+    chat_history = Column(Text)  # JSON string storing conversation history
 
     webpages = relationship("WebPage", back_populates="search")
 

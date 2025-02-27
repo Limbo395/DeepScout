@@ -1,43 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>DeepScout Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepScout</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .ai-response-label {
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        /* CSS for loading overlay and spinner */
-        /* Removed full-screen loading overlay styles */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #000;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .ai-loading {
-            font-style: italic;
-            color: #888;
-            animation: shimmer 1.5s infinite;
-        }
-        @keyframes shimmer {
-            0% {
-                background-position: -1000px 0;
-            }
-            100% {
-                background-position: 1000px 0;
-            }
-        }
-    </style>
+    <link rel="icon" href="{{ url_for('static', filename='default-favicon.png') }}">
 </head>
 <body>
-    <!-- Removed full-screen loading overlay -->
     <div class="app-header">
         <div class="app-title">DeepScout</div>
         <div class="settings-container">
@@ -46,153 +16,438 @@
             </a>
         </div>
     </div>
+
     <main class="page-container">
-        {% if gemini_response or gemini_report or gemini_answer or search_results %}
+        {% if gemini_response or gemini_report or search_results %}
         <section class="response-section">
-            <!-- Display user's question if present -->
-            {% if user_query %}
-            <div class="user-message">
-                <p>{{ user_query }}</p>
-            </div>
-            {% endif %}
-            {% if user_question %}
-            <div class="user-message">
-                <p>{{ user_question }}</p>
-            </div>
-            {% endif %}
-            <div class="ai-response-label">
-                <p>AI response:</p>
-            </div>
-            {% if not gemini_response and search_type == 'shallow' %}
-                <div class="ai-loading">Generating response...</div>
-            {% elif not gemini_report and search_type == 'deep' %}
-                <div class="ai-loading">Generating response...</div>
+            <!-- Display chat history -->
+            {% if chat_history %}
+                <div class="chat-history">
+                    {% for message in chat_history %}
+                        {% if message.role == "user" %}
+                            <div class="user-message">
+                                <p>{{ message.content }}</p>
+                            </div>
+                        {% elif message.role == "assistant" %}
+                            <div class="ai-response-label">
+                                <p>AI Response</p>
+                            </div>
+                            <div class="gemini-response">
+                                {{ message.content | convert_markdown | safe }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             {% else %}
-                {% if search_type == 'shallow' %}
-                    <div class="gemini-response">
-                        {{ gemini_response | convert_markdown | safe }}
+                <!-- Old-style display if no chat history available -->
+                {% if user_query %}
+                <div class="user-message">
+                    <p>{{ user_query }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="ai-response-label">
+                    <p>AI Response</p>
+                </div>
+                
+                {% if not gemini_response and search_type == 'shallow' and not gemini_answer %}
+                    <div class="ai-loading">
+                        Generating response
+                        <div class="loading-animation">
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                        </div>
                     </div>
-                    <h2>Recommended sites:</h2>
+                {% elif not gemini_report and search_type == 'deep' and not gemini_answer %}
+                    <div class="ai-loading">
+                        Researching in depth
+                        <div class="loading-animation">
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                            <span class="loading-dot"></span>
+                        </div>
+                    </div>
+                {% else %}
+                    {% if search_type == 'shallow' %}
+                        <div class="gemini-response">
+                            {{ gemini_response | convert_markdown | safe }}
+                        </div>
+                    {% elif search_type == 'deep' %}
+                        <div class="gemini-response">
+                            {{ gemini_report | convert_markdown | safe }}
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            
+            <!-- Recommended sites section (always visible if there are search results) -->
+            {% if search_type == 'shallow' and search_results %}
+                <div class="results-container">
+                    <h2>Recommended Sites</h2>
                     <ul class="results-list">
                         {% for result in search_results %}
                             <li>
-                                <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16">
+                                <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16" onerror="this.src='{{ url_for('static', filename='default-favicon.png') }}';">
                                 <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
                             </li>
                         {% endfor %}
                     </ul>
-                {% elif search_type == 'deep' %}
-                    <div class="gemini-response">
-                        {{ gemini_report | convert_markdown | safe }}
-                    </div>
-                    {% if pages %}
-                    <h2>Visited Sites:</h2>
+                </div>
+            {% endif %}
+            
+            <!-- Visited sites section for deep search -->
+            {% if search_type == 'deep' and pages %}
+                <div class="sources-container">
+                    <h2>Visited Sites</h2>
                     <ul class="visited-sites">
                         {% for page in pages %}
                             <li>
-                                <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                                <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='{{ url_for('static', filename='default-favicon.png') }}';">
                                 <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
                             </li>
                         {% endfor %}
                     </ul>
-                    {% endif %}
-                    {% if gemini_answer %}
-                    <div class="additional-answer">
-                        <h2>Answer to additional question:</h2>
-                        <div class="gemini-response">
-                            {{ gemini_answer | convert_markdown | safe }}
+                </div>
+            {% endif %}
+            
+            <!-- Follow-up form inside the response section (appears only if there's a search ID) -->
+            {% if search_id %}
+                <div class="follow-up-container">
+                    <form action="/ask" method="post" class="follow-up-form">
+                        <input type="hidden" name="search_id" value="{{ search_id }}">
+                        <input type="hidden" name="search_type" value="{{ search_type }}">
+                        <div class="input-group">
+                            <input type="text" name="question" placeholder="Ask a follow-up question..." required>
+                            <button type="submit">Ask</button>
                         </div>
-                    </div>
-                    {% endif %}
-                {% endif %}
+                    </form>
+                </div>
             {% endif %}
         </section>
         {% endif %}
 
-        <section class="chat-section">
+        <!-- Chat form - only visible if there's no existing conversation yet -->
+        {% if not chat_history and not gemini_response and not gemini_report %}
+        <section class="chat-section" id="initial-chat-section">
             <form action="/search" method="post" class="chat-form">
-                <!-- Mode toggle button -->
-                <button type="button" id="mode-toggle">
-                    <img src="{{ url_for('static', filename='brains.png') }}" alt="Mode">
+                <button type="button" id="mode-toggle" title="Toggle between quick search and deep research">
+                    <img src="{{ url_for('static', filename='brains.png') }}" alt="Research Mode">
                 </button>
                 <input type="hidden" name="search_type" id="search_type_input" value="shallow">
-                <textarea name="query" placeholder="Enter query..." rows="3" required></textarea>
-                <!-- Clear Chat button now before send button -->
-                <button type="button" id="clear-chat">
+                <textarea name="query" placeholder="Ask a question..." rows="1" required></textarea>
+                <button type="button" id="clear-chat" title="Clear chat history">
                     <img src="{{ url_for('static', filename='clear.png') }}" alt="Clear Chat">
                 </button>
                 <button type="submit" id="send-button">→</button>
             </form>
         </section>
+        {% endif %}
+        
         <!-- Modal confirmation popup -->
         <div id="confirm-modal" class="modal" style="display:none;">
             <div class="modal-content">
-                <h2>Confirm Action</h2>
-                <p>Are you sure you want to clear the chat?</p>
-                <button id="confirm-yes">Yes</button>
-                <button id="confirm-cancel">Cancel</button>
+                <h2>Clear Conversation</h2>
+                <p>Are you sure you want to clear the current conversation?</p>
+                <div class="modal-actions">
+                    <button id="confirm-yes">Yes, clear it</button>
+                    <button id="confirm-cancel">Cancel</button>
+                </div>
             </div>
         </div>
+        
         <script>
-            document.getElementById("mode-toggle").addEventListener("click", function() {
-                var hiddenInput = document.getElementById("search_type_input");
-                if (hiddenInput.value === "shallow") {
-                    hiddenInput.value = "deep";
-                    this.classList.add("active");
-                } else {
-                    hiddenInput.value = "shallow";
-                    this.classList.remove("active");
-                }
-            });
-            document.getElementById("clear-chat").addEventListener("click", function(){
-                // Show modal confirmation dialog
-                document.getElementById("confirm-modal").style.display = "flex";
-            });
-            document.getElementById("confirm-yes").addEventListener("click", function(){
-                var responseSection = document.querySelector(".response-section");
-                if (responseSection) {
-                    responseSection.innerHTML = "";
-                }
-                document.getElementById("confirm-modal").style.display = "none";
-            });
-            document.getElementById("confirm-cancel").addEventListener("click", function(){
-                document.getElementById("confirm-modal").style.display = "none";
-            });
-            // Замінюємо обробник submit на асинхронну версію
-            document.querySelector('.chat-form').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                var responseSection = document.querySelector(".response-section");
-                if (!responseSection) {
-                    responseSection = document.createElement("section");
-                    responseSection.className = "response-section";
-                    document.querySelector("main").prepend(responseSection);
-                }
-                responseSection.innerHTML = '<div class="ai-loading">Generating response<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>';
-
-                // Відправляємо запит асинхронно
-                const formData = new FormData(this);
-                try {
-                    const response = await fetch('/search', {
-                        method: 'POST',
-                        body: formData
-                    });
+            document.addEventListener('DOMContentLoaded', function() {
+                // Mode toggle functionality
+                const modeToggle = document.getElementById('mode-toggle');
+                if (modeToggle) {
+                    const searchTypeInput = document.getElementById('search_type_input');
+                    const textarea = document.querySelector('.chat-form textarea');
                     
-                    if (response.ok) {
-                        const html = await response.text();
-                        // Створюємо тимчасовий div для парсингу HTML
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        
-                        // Знаходимо нову response-section в отриманому HTML
-                        const newResponseSection = tempDiv.querySelector('.response-section');
-                        if (newResponseSection) {
-                            responseSection.innerHTML = newResponseSection.innerHTML;
-                        }
-                    } else {
-                        responseSection.innerHTML = '<div class="error">Error occurred while generating response</div>';
+                    // Auto-resize textarea as user types
+                    if (textarea) {
+                        textarea.addEventListener('input', function() {
+                            this.style.height = 'auto';
+                            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+                        });
                     }
-                } catch (error) {
-                    responseSection.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+                    
+                    modeToggle.addEventListener('click', function() {
+                        if (searchTypeInput.value === 'shallow') {
+                            searchTypeInput.value = 'deep';
+                            modeToggle.classList.add('active');
+                            if (textarea) textarea.placeholder = 'Ask for deep research...';
+                        } else {
+                            searchTypeInput.value = 'shallow';
+                            modeToggle.classList.remove('active');
+                            if (textarea) textarea.placeholder = 'Ask a question...';
+                        }
+                    });
+                }
+                
+                // Clear chat functionality
+                const clearChatBtn = document.getElementById('clear-chat');
+                if (clearChatBtn) {
+                    clearChatBtn.addEventListener('click', function() {
+                        document.getElementById('confirm-modal').style.display = 'flex';
+                    });
+                }
+                
+                document.getElementById('confirm-yes').addEventListener('click', function() {
+                    // Clear chat and reload page
+                    window.location.href = '/';
+                });
+                
+                document.getElementById('confirm-cancel').addEventListener('click', function() {
+                    document.getElementById('confirm-modal').style.display = 'none';
+                });
+                
+                // AJAX form submission for initial query
+                const initialChatForm = document.querySelector('.chat-form');
+                if (initialChatForm) {
+                    initialChatForm.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        const textarea = this.querySelector('textarea');
+                        // Don't submit if textarea is empty
+                        if (!textarea.value.trim()) return;
+                        
+                        // Reset textarea height
+                        textarea.style.height = 'auto';
+                        
+                        // Create response section if it doesn't exist
+                        let responseSection = document.querySelector('.response-section');
+                        if (!responseSection) {
+                            responseSection = document.createElement('section');
+                            responseSection.className = 'response-section';
+                            document.querySelector('main').prepend(responseSection);
+                        }
+                        
+                        // Get the query text for displaying in the user message
+                        const queryText = textarea.value;
+                        
+                        // Check if this is a deep or shallow search
+                        const searchTypeInput = document.getElementById('search_type_input');
+                        const isDeepSearch = searchTypeInput.value === 'deep';
+                        const loadingText = isDeepSearch ? 'Researching in depth' : 'Generating response';
+                        
+                        // Create the loading HTML with the appropriate animation
+                        responseSection.innerHTML = `
+                            <div class="user-message">
+                                <p>${queryText}</p>
+                            </div>
+                            <div class="ai-response-label">
+                                <p>AI Response</p>
+                            </div>
+                            <div class="ai-loading">
+                                ${loadingText}
+                                <div class="loading-animation">
+                                    <span class="loading-dot"></span>
+                                    <span class="loading-dot"></span>
+                                    <span class="loading-dot"></span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Hide the initial chat section
+                        const initialChatSection = document.getElementById('initial-chat-section');
+                        if (initialChatSection) {
+                            initialChatSection.style.display = 'none';
+                        }
+                        
+                        // Scroll to the top of the response
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Submit the form data
+                        const formData = new FormData(this);
+                        try {
+                            const response = await fetch('/search', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (response.ok) {
+                                const html = await response.text();
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = html;
+                                
+                                const newResponseSection = tempDiv.querySelector('.response-section');
+                                if (newResponseSection) {
+                                    responseSection.innerHTML = newResponseSection.innerHTML;
+                                    
+                                    // Remove blue color from any links in the response
+                                    const links = responseSection.querySelectorAll('.gemini-response a');
+                                    links.forEach(link => {
+                                        link.style.color = 'inherit';
+                                        link.style.textDecoration = 'underline';
+                                        link.style.textDecorationColor = 'rgba(161, 161, 169, 0.3)';
+                                    });
+                                    
+                                    // Set up the follow-up form behavior
+                                    setupFollowUpForms();
+                                }
+                            } else {
+                                responseSection.innerHTML = `
+                                    <div class="user-message">
+                                        <p>${queryText}</p>
+                                    </div>
+                                    <div class="ai-response-label">
+                                        <p>AI Response</p>
+                                    </div>
+                                    <div class="error">
+                                        An error occurred while processing your request. Please try again.
+                                    </div>
+                                `;
+                            }
+                        } catch (error) {
+                            responseSection.innerHTML = `
+                                <div class="user-message">
+                                    <p>${queryText}</p>
+                                </div>
+                                <div class="ai-response-label">
+                                    <p>AI Response</p>
+                                </div>
+                                <div class="error">
+                                    Error: ${error.message}
+                                </div>
+                            `;
+                        }
+                        
+                        // Clear the textarea after submission
+                        textarea.value = '';
+                    });
+                }
+                
+                // Function to set up follow-up forms
+                function setupFollowUpForms() {
+                    document.querySelectorAll('.follow-up-form').forEach(form => {
+                        form.addEventListener('submit', async function(e) {
+                            e.preventDefault();
+                            
+                            const questionInput = this.querySelector('input[name="question"]');
+                            const question = questionInput.value.trim();
+                            
+                            if (!question) return;
+                            
+                            // Get the current chat history
+                            const chatHistory = document.querySelector('.chat-history');
+                            
+                            // Create a loading message
+                            const userMsg = document.createElement('div');
+                            userMsg.className = 'user-message';
+                            userMsg.innerHTML = `<p>${question}</p>`;
+                            
+                            const aiLabel = document.createElement('div');
+                            aiLabel.className = 'ai-response-label';
+                            aiLabel.innerHTML = '<p>AI Response</p>';
+                            
+                            const aiLoading = document.createElement('div');
+                            aiLoading.className = 'ai-loading';
+                            aiLoading.innerHTML = `
+                                Generating response
+                                <div class="loading-animation">
+                                    <span class="loading-dot"></span>
+                                    <span class="loading-dot"></span>
+                                    <span class="loading-dot"></span>
+                                </div>
+                            `;
+                            
+                            // If there's a chat history, append to it
+                            if (chatHistory) {
+                                chatHistory.appendChild(userMsg);
+                                chatHistory.appendChild(aiLabel);
+                                chatHistory.appendChild(aiLoading);
+                            } else {
+                                // If no chat history found, insert at top of response section
+                                const responseSection = document.querySelector('.response-section');
+                                if (responseSection) {
+                                    responseSection.prepend(aiLoading);
+                                    responseSection.prepend(aiLabel);
+                                    responseSection.prepend(userMsg);
+                                }
+                            }
+                            
+                            // Scroll to the loading indicator
+                            aiLoading.scrollIntoView({ behavior: 'smooth' });
+                            
+                            // Clear the input
+                            questionInput.value = '';
+                            
+                            // Submit the follow-up question
+                            const formData = new FormData(this);
+                            try {
+                                const response = await fetch('/ask', {
+                                    method: 'POST',
+                                    body: formData
+                                });
+                                
+                                if (response.ok) {
+                                    const html = await response.text();
+                                    const tempDiv = document.createElement('div');
+                                    tempDiv.innerHTML = html;
+                                    
+                                    // Replace the entire response section
+                                    const newResponseSection = tempDiv.querySelector('.response-section');
+                                    const currentResponseSection = document.querySelector('.response-section');
+                                    
+                                    if (newResponseSection && currentResponseSection) {
+                                        currentResponseSection.innerHTML = newResponseSection.innerHTML;
+                                        
+                                        // Remove blue color from any links
+                                        const links = currentResponseSection.querySelectorAll('.gemini-response a');
+                                        links.forEach(link => {
+                                            link.style.color = 'inherit';
+                                            link.style.textDecoration = 'underline';
+                                            link.style.textDecorationColor = 'rgba(161, 161, 169, 0.3)';
+                                        });
+                                        
+                                        // Set up the new follow-up form
+                                        setupFollowUpForms();
+                                        
+                                        // Scroll to the last message
+                                        const allMessages = currentResponseSection.querySelectorAll('.gemini-response');
+                                        if (allMessages.length > 0) {
+                                            allMessages[allMessages.length - 1].scrollIntoView({ behavior: 'smooth' });
+                                        }
+                                    }
+                                } else {
+                                    // Replace loading with error
+                                    aiLoading.innerHTML = `
+                                        <div class="error">
+                                            An error occurred while processing your request. Please try again.
+                                        </div>
+                                    `;
+                                }
+                            } catch (error) {
+                                // Replace loading with error
+                                aiLoading.innerHTML = `
+                                    <div class="error">
+                                        Error: ${error.message}
+                                    </div>
+                                `;
+                            }
+                        });
+                    });
+                }
+                
+                // Set up any existing follow-up forms
+                setupFollowUpForms();
+                
+                // Style any existing links in gemini responses
+                const links = document.querySelectorAll('.gemini-response a');
+                links.forEach(link => {
+                    link.style.color = 'inherit';
+                    link.style.textDecoration = 'underline';
+                    link.style.textDecorationColor = 'rgba(161, 161, 169, 0.3)';
+                });
+                
+                // Scroll to bottom of chat history if it exists
+                const chatHistory = document.querySelector('.chat-history');
+                if (chatHistory) {
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
                 }
             });
         </script>

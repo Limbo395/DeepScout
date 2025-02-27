@@ -1,26 +1,44 @@
-<!-- [templates/settings.html](templates/settings.html) -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeepScout Settings</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='default-favicon.png') }}">
 </head>
 <body>
     <header>
-        <h1>Settings</h1>
+        <h1>DeepScout Settings</h1>
         <nav>
-            <a href="/">Home</a>
+            <a href="/">Back to Search</a>
         </nav>
     </header>
-    <main>
+    
+    <main class="page-container">
         <form action="/save-settings" method="post" class="settings-form">
+            <h2>API Configuration</h2>
+            <p>Configure your Gemini API key to enable DeepScout's search capabilities. You need a valid Google Gemini API key to use this application.</p>
+            
             <label for="api_key">Gemini API Key:</label>
-            <input type="text" id="api_key" name="api_key" placeholder="Enter API key">
-            <button type="submit">Save</button>
+            <input type="text" id="api_key" name="api_key" placeholder="Enter your Gemini API key" value="{{ api_key if api_key else '' }}">
+            
+            <button type="submit">Save Settings</button>
+            
+            <p style="margin-top: 20px; font-size: 14px;">
+                To get a Gemini API key, visit the <a href="https://ai.google.dev/" target="_blank">Google AI Developer Portal</a>
+            </p>
         </form>
     </main>
-    <footer>
-        <p>&copy; DeepScout</p>
-    </footer>
+    
+    <script>
+        // Animate header title with gradient
+        document.addEventListener('DOMContentLoaded', function() {
+            const title = document.querySelector('header h1');
+            if (title) {
+                title.style.animation = 'titleGradient 10s linear infinite';
+            }
+        });
+    </script>
 </body>
 </html>

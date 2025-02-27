@@ -1,39 +1,86 @@
 <section class="response-section">
-    {% if user_query %}
-    <div class="user-message">
-        <p>{{ user_query }}</p>
-    </div>
-    {% endif %}
-    <div class="ai-response-label">
-        <p>AI response:</p>
-    </div>
-    {% if search_type == 'shallow' %}
-        <div class="gemini-response">
-            {{ gemini_response | convert_markdown | safe }}
-        </div>
-        <h2>Recommended sites:</h2>
-        <ul class="results-list">
-            {% for result in search_results %}
-                <li>
-                    <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16">
-                    <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
-                </li>
+    <!-- Display chat history -->
+    {% if chat_history %}
+        <div class="chat-history">
+            {% for message in chat_history %}
+                {% if message.role == "user" %}
+                    <div class="user-message">
+                        <p>{{ message.content }}</p>
+                    </div>
+                {% elif message.role == "assistant" %}
+                    <div class="ai-response-label">
+                        <p>AI Response</p>
+                    </div>
+                    <div class="gemini-response">
+                        {{ message.content | convert_markdown | safe }}
+                    </div>
+                {% endif %}
             {% endfor %}
-        </ul>
-    {% elif search_type == 'deep' %}
-        <div class="gemini-response">
-            {{ gemini_report | safe }}
         </div>
-        {% if pages %}
-        <h2>Visited Sites:</h2>
-        <ul class="visited-sites">
-            {% for page in pages %}
-                <li>
-                    <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
-                    <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
-                </li>
-            {% endfor %}
-        </ul>
+    {% else %}
+        <!-- Old-style display if no chat history available -->
+        {% if user_query %}
+        <div class="user-message">
+            <p>{{ user_query }}</p>
+        </div>
         {% endif %}
+        
+        <div class="ai-response-label">
+            <p>AI Response</p>
+        </div>
+        
+        {% if search_type == 'shallow' %}
+            <div class="gemini-response">
+                {{ gemini_response | convert_markdown | safe }}
+            </div>
+        {% elif search_type == 'deep' %}
+            <div class="gemini-response">
+                {{ gemini_report | convert_markdown | safe }}
+            </div>
+        {% endif %}
+    {% endif %}
+    
+    <!-- Recommended sites section (always visible if there are search results) -->
+    {% if search_type == 'shallow' and search_results %}
+        <div class="results-container">
+            <h2>Recommended Sites</h2>
+            <ul class="results-list">
+                {% for result in search_results %}
+                    <li>
+                        <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                        <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    
+    <!-- Visited sites section for deep search -->
+    {% if search_type == 'deep' and pages %}
+        <div class="sources-container">
+            <h2>Visited Sites</h2>
+            <ul class="visited-sites">
+                {% for page in pages %}
+                    <li>
+                        <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                        <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    
+    <!-- Follow-up form inside the response section (appears only if there's a search ID) -->
+    {% if search_id %}
+        <div class="follow-up-container">
+            <form action="/ask" method="post" class="follow-up-form">
+                <input type="hidden" name="search_id" value="{{ search_id }}">
+                <input type="hidden" name="search_type" value="{{ search_type }}">
+                <div class="input-group">
+                    <input type="text" name="question" placeholder="Ask a follow-up question..." required>
+                    <button type="submit">Ask</button>
+                </div>
+            </form>
+        </div>
     {% endif %}
 </section>

@@ -1,65 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Search Results</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepScout Results</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='default-favicon.png') }}">
 </head>
 <body>
     <header>
-        <h1>DeepScout - Results</h1>
+        <h1>DeepScout Results</h1>
         <nav>
             <a href="/">Home</a>
             <a href="/settings">Settings</a>
         </nav>
     </header>
-    <main>
+    
+    <main class="page-container">
         {% if search_type == 'shallow' %}
             <section class="response-section">
-                <h2>Short answer from Gemini:</h2>
-                <p>{{ gemini_response }}</p>
-            </section>
-            <section class="results-section">
-                <h2>DuckDuckGo Results:</h2>
-                <ul>
+                <div class="user-message">
+                    <p>{{ user_query }}</p>
+                </div>
+                
+                <div class="ai-response-label">
+                    <p>AI Response</p>
+                </div>
+                
+                <div class="gemini-response">
+                    {{ gemini_response | convert_markdown | safe }}
+                </div>
+                
+                <h2>Recommended Sites</h2>
+                <ul class="results-list">
                     {% for result in search_results %}
-                        <li><a href="{{ result.url }}" target="_blank">{{ result.title }}</a></li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% elif search_type == 'deep' %}
-            <section class="report-section">
-                <h2>Deep Research Report:</h2>
-                <div class="report-content">{{ gemini_report | safe }}</div>
-            </section>
-            <section class="pages-section">
-                <h2>Visited Sites:</h2>
-                <ul>
-                    {% for page in pages %}
                         <li>
-                            <img src="{{ page.icon_url }}" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
-                            <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                            <img src="https://www.google.com/s2/favicons?domain={{ result.url }}" alt="Favicon" width="16" height="16" onerror="this.src='{{ url_for('static', filename='default-favicon.png') }}';">
+                            <a href="{{ result.url }}" target="_blank">{{ result.title }}</a>
                         </li>
                     {% endfor %}
                 </ul>
             </section>
-            <section class="question-section">
-                <h2>Additional Questions</h2>
-                <form action="/ask" method="post">
-                    <input type="hidden" name="search_id" value="{{ search_id }}">
-                    <input type="text" name="question" placeholder="Enter additional question">
-                    <button type="submit">Ask</button>
-                </form>
-                {% if gemini_answer %}
-                    <div class="additional-answer">
-                        <h2>Answer to additional question:</h2>
-                        <p>{{ gemini_answer }}</p>
-                    </div>
+        {% elif search_type == 'deep' %}
+            <section class="response-section">
+                <div class="user-message">
+                    <p>{{ user_query }}</p>
+                </div>
+                
+                <div class="ai-response-label">
+                    <p>Deep Research Report</p>
+                </div>
+                
+                <div class="gemini-response">
+                    {{ gemini_report | convert_markdown | safe }}
+                </div>
+                
+                {% if pages %}
+                <h2>Visited Sites</h2>
+                <ul class="visited-sites">
+                    {% for page in pages %}
+                        <li>
+                            <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='{{ url_for('static', filename='default-favicon.png') }}';">
+                            <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
                 {% endif %}
+                
+                <section class="additional-questions">
+                    <h2>Ask a Follow-Up Question</h2>
+                    <form action="/ask" method="post" class="follow-up-form">
+                        <input type="hidden" name="search_id" value="{{ search_id }}">
+                        <div class="input-group">
+                            <input type="text" name="question" placeholder="Enter your follow-up question" required>
+                            <button type="submit">Ask</button>
+                        </div>
+                    </form>
+                    
+                    {% if gemini_answer %}
+                        <div class="additional-answer">
+                            <h2>Answer to Follow-Up Question</h2>
+                            <div class="gemini-response">
+                                {{ gemini_answer | convert_markdown | safe }}
+                            </div>
+                        </div>
+                    {% endif %}
+                </section>
             </section>
         {% endif %}
     </main>
-    <footer>
-        <p>&copy;</p>
-    </footer>
 </body>
 </html>
