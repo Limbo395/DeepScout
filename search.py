@@ -13,28 +13,33 @@ from database import Search, WebPage
 
 logging.basicConfig(level=logging.INFO)
 
-def get_gemini_response(query, api_key):
+def get_gemini_response(query, api_key, detailed=False):
     if not api_key:
         return "Помилка: Не налаштовано API key для Gemini."
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash')
     
-    # Improved prompt for balanced and informative responses
-    prompt = f"""Відповідь на запит: "{query}"
-
-    Інструкції:
-    1. Визнач мову запиту і відповідай тією ж мовою
-    2. Якщо це запит про значення (наприклад, "торт", "програмування") - поясни, що це таке, і надай короткий, але інформативний огляд, включаючи основні різновиди або категорії
-    3. Якщо це конкретне запитання - надай чітку відповідь з підтверджуючими деталями
-    4. Не використовуй метамову типу "Відповідно до...", "На основі інформації..." тощо 
-    5. Форматуй відповідь структуровано, використовуючи заголовки тільки за потреби
-    6. Відповідь має бути змістовною, але лаконічною
-    7. Не починай з "Це..." або подібних загальних вступів
-    8. Уникай кольорових гіперпосилань
-    """
-    
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        
+        # Enhanced prompt for regular searches to provide more detailed responses
+        if detailed:
+            enhanced_query = f"""Надай детальну відповідь на запит: {query}
+            
+            Інструкції:
+            1. Визнач мову запиту і використовуй її у відповіді
+            2. Надай повну і детальну інформацію з різних сторін питання
+            3. Структуруй відповідь для кращого розуміння
+            4. Використовуй приклади, аналогії та пояснення, де це необхідно
+            5. Уникай надто коротких і поверхневих відповідей
+            """
+            query = enhanced_query
+        
+        # Generate response
+        response = model.generate_content(query)
+        return response.text.strip()
+    except Exception as e:
+        logging.error(f"Error in get_gemini_response: {e}")
+        return f"Помилка при отриманні відповіді від Gemini: {str(e)}"
 
 def generate_sub_queries(query, api_key, num_queries=5):
     """
@@ -45,11 +50,10 @@ def generate_sub_queries(query, api_key, num_queries=5):
         return ["Помилка: Не налаштовано API key для Gemini."]
 
     prompt = (
-        f"На основі запиту '{query}', створи {num_queries} пошукових запитів, які допоможуть зібрати вичерпну інформацію. "
-        f"Поверни ТІЛЬКИ список запитів без нумерації чи пояснень - по одному на рядок. "
+        f"На основі запиту '{query}', створи {num_queries} пошукових запитів, які допоможуть зібрати вичерпну інформацію. "        f"Поверни ТІЛЬКИ список запитів без нумерації чи пояснень - по одному на рядок. "
         f"Визнач мову запиту і використовуй ту саму мову."
     )
-    sub_queries = get_gemini_response(prompt, api_key).splitlines()
+    sub_queries = get_gemini_response(prompt, api_key, detailed=False).splitlines()
     
     # Filter out any lines that might be empty or contain unwanted characters
     filtered_queries = [q.strip() for q in sub_queries if q.strip()]
@@ -86,64 +90,117 @@ def search_duckduckgo(query, num_results=10):
 
 def perform_deep_search(query, api_key, session):
     """
-    Performs deep search: generates sub-queries, collects URLs, extracts content and saves to DB.
-    Improved prompt for better deep research reports.
+    Виконує глибокий пошук: генерує підзапити, збирає URL, витягує вміст сторінок і зберігає в БД.
+    Покращена логіка для кращого отримання контенту та обробки помилок.
     """
+    # 1. Генеруємо підзапити (обмежуємо до 3 для швидкості)
+    sub_queries = generate_sub_queries(query, api_key)[:3]
 
-    # 1. Generate Sub-Queries
-    sub_queries = generate_sub_queries(query, api_key)
-
-    all_urls = set()  # use a set to avoid duplicates
+    all_urls = set()  # використовуємо множину для унікальних URL
     all_content = ""
-
-    # Create main search entry
-    new_search = Search(query=query, search_type="deep", response="")
+    
+    # Створюємо основний запис пошуку
+    new_search = Search(
+        query=query, 
+        search_type="deep", 
+        response="Пошук триває... Збираємо інформацію з джерел."
+    )
     session.add(new_search)
     session.commit()
     search_id = new_search.id
 
-    # 2. Search and Collect URLs
+    # 2. Шукаємо URL (обмежуємо до 5 на запит)
     for sub_query in sub_queries:
-        search_results = search_duckduckgo(sub_query, num_results=10)
+        search_results = search_duckduckgo(sub_query, num_results=5)
         for result in search_results:
             all_urls.add(result['url'])
 
-    # 3. Extract Content and Save to DB
-    for url in all_urls:
-        try:
-            title = url  # fallback title
-            favicon_url = ""
+    successful_pages = 0
+    
+    # Створюємо нову сесію для обробки сторінок, щоб запобігти проблемам з від'єднаними об'єктами
+    if len(all_urls) > 0:
+        for url in all_urls:
             try:
-                favicon_url = get_favicon(url)
-            except Exception as e:
-                logging.error(f"Помилка при отриманні іконки для {url}: {e}")
-            content = ""
-            try:
+                # Стандартні значення за замовчуванням
+                title = url  # URL як заголовок за замовчуванням
+                favicon_url = "/static/default-favicon.png"  # іконка за замовчуванням
+                content = ""
+                
+                # Спроба отримати контент
                 content = parse_page_content(url)
+                
+                # Пропускаємо, якщо контент занадто короткий
+                if len(content.strip()) < 30:
+                    print(f"Занадто короткий контент для {url}")
+                    continue
+                
+                # Спроба отримати заголовок (щоб не блокуватись, використовуємо прості заголовки)
+                try:
+                    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                    response = requests.get(url, headers=headers, timeout=5)
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        if soup.title and soup.title.string:
+                            title = soup.title.string.strip()
+                except Exception as e:
+                    logging.warning(f"Не вдалося отримати заголовок для {url}: {e}")
+                
+                # Спроба отримати іконку
+                try:
+                    favicon_url = get_favicon(url)
+                except Exception as e:
+                    logging.warning(f"Не вдалося отримати іконку для {url}: {e}")
+                
+                # Додаємо контент до загального вмісту для звіту
+                all_content += f"\n\n# {title}\n\n{content}"
+                successful_pages += 1
+                
+                # Зберігаємо в БД
+                try:
+                    # Використовуємо ту саму сесію, що створила new_search
+                    new_page = WebPage(
+                        search_id=search_id, 
+                        url=url, 
+                        title=title, 
+                        icon_url=favicon_url, 
+                        content=content
+                    )
+                    session.add(new_page)
+                    session.commit()
+                except Exception as e:
+                    logging.error(f"Помилка при збереженні в БД для {url}: {e}")
+                
             except Exception as e:
-                logging.error(f"Помилка при завантаженні сторінки {url}: {e}")
+                logging.error(f"Глобальна помилка при обробці {url}: {e}")
+    
+    # Відлагоджувальна інформація
+    print(f"Успішно оброблено сторінок: {successful_pages} з {len(all_urls)}")
+    
+    # 4. Генеруємо звіт
+    if successful_pages == 0:
+        # Якщо жодна сторінка не оброблена успішно
+        error_message = f"""## Результати пошуку за запитом "{query}"
 
-            # Try to get real title
-            try:
-                response = requests.get(url, timeout=5)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.content, 'html.parser')
-                if soup.title and soup.title.string:
-                    title = soup.title.string.strip()
-            except Exception as e:
-                logging.error(f"Помилка при завантаженні заголовку для {url}: {e}")
+На жаль, не вдалося отримати корисний вміст з веб-сторінок. Можливі причини:
+- Сайти блокують автоматичні запити
+- Проблеми з підключенням до Інтернету
+- Обмежений доступ до контенту
 
-            all_content += f"\n\n# {title}\n\n{content}"
-
-            new_page = WebPage(search_id=search_id, url=url, title=title, icon_url=favicon_url, content=content)
-            session.add(new_page)
-            session.commit()
-        except Exception as e:
-            logging.error(f"Помилка при обробці {url}: {e}")
-
-    # 4. Generate Report
+Спробуйте наступне:
+1. Використайте більш конкретний пошуковий запит
+2. Спробуйте звичайний (не глибокий) пошук
+3. Перевірте підключення до Інтернету
+"""
+        new_search.response = error_message
+        session.commit()
+        return search_id
+    
+    # Якщо є контент, генеруємо звіт за допомогою Gemini
     if api_key:
-        # Improved deep research prompt for more extensive and structured reports
+        # Обмежуємо розмір контенту для API
+        max_content_length = 30000
+        trimmed_content = all_content[:max_content_length] if len(all_content) > max_content_length else all_content
+        
         prompt = f"""Створи детальний аналітичний звіт на тему: "{query}"
 
         Інструкції:
@@ -157,15 +214,19 @@ def perform_deep_search(query, api_key, session):
         8. Підготуй комплексний, інформативний та структурований звіт
         
         Інформація з джерел:
-        {all_content}
-        """
+        {trimmed_content}        """
         
-        gemini_report = get_gemini_response(prompt, api_key)
-        new_search.response = gemini_report
+        try:
+            gemini_report = get_gemini_response(prompt, api_key, detailed=False)
+            new_search.response = gemini_report
+        except Exception as e:
+            logging.error(f"Помилка при отриманні відповіді Gemini: {e}")
+            new_search.response = f"Сталася помилка при генерації звіту: {str(e)}\n\nЗібраний контент:\n{trimmed_content[:1000]}..."
+        
         session.commit()
     else:
-        gemini_report = "Помилка: Не налаштовано API key для Gemini. Звіт не може бути згенерований."
-        new_search.response = gemini_report
+        # Якщо API ключ не налаштовано
+        new_search.response = "Помилка: Не налаштовано API key для Gemini. Звіт не може бути згенерований."
         session.commit()
 
     return search_id

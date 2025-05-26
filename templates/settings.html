@@ -16,9 +16,20 @@
     </header>
     
     <main class="page-container">
-        <form action="/save-settings" method="post" class="settings-form">
-            <h2>API Configuration</h2>
+        <form action="/save-settings" method="post" class="settings-form">            <h2>API Configuration</h2>
             <p>Configure your Gemini API key to enable DeepScout's search capabilities. You need a valid Google Gemini API key to use this application.</p>
+            
+            {% if success_message %}
+                <div class="success-message">{{ success_message }}</div>
+            {% endif %}
+            
+            {% if error_message %}
+                <div class="error-message">{{ error_message }}</div>
+            {% endif %}
+            
+            {% if info_message %}
+                <div class="info-message">{{ info_message }}</div>
+            {% endif %}
             
             <label for="api_key">Gemini API Key:</label>
             <input type="text" id="api_key" name="api_key" placeholder="Enter your Gemini API key" value="{{ api_key if api_key else '' }}">

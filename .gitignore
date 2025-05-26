@@ -40,3 +40,8 @@ build/
 venv/
 env/
 deepscout.db
+
+# API Keys and sensitive data
+config/api_key.txt
+*.env
+.env

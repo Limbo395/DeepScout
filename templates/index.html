@@ -116,10 +116,14 @@
                 <div class="follow-up-container">
                     <form action="/ask" method="post" class="follow-up-form">
                         <input type="hidden" name="search_id" value="{{ search_id }}">
-                        <input type="hidden" name="search_type" value="{{ search_type }}">
-                        <div class="input-group">
+                        <input type="hidden" name="search_type" value="{{ search_type }}">                        <div class="input-group">
                             <input type="text" name="question" placeholder="Ask a follow-up question..." required>
-                            <button type="submit">Ask</button>
+                            <button type="button" class="clear-chat-btn" id="clear-chat" title="Clear conversation">
+                                <img src="{{ url_for('static', filename='clear.png') }}" alt="Clear">
+                            </button>
+                            <button type="submit" id="send-button">
+                                <span>➤</span>
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -139,7 +143,9 @@
                 <button type="button" id="clear-chat" title="Clear chat history">
                     <img src="{{ url_for('static', filename='clear.png') }}" alt="Clear Chat">
                 </button>
-                <button type="submit" id="send-button">→</button>
+                <button type="submit" id="send-button">
+                    <span>➤</span>
+                </button>
             </form>
         </section>
         {% endif %}
@@ -184,23 +190,13 @@
                         }
                     });
                 }
-                
-                // Clear chat functionality
+                  // Clear chat functionality
                 const clearChatBtn = document.getElementById('clear-chat');
                 if (clearChatBtn) {
                     clearChatBtn.addEventListener('click', function() {
                         document.getElementById('confirm-modal').style.display = 'flex';
                     });
                 }
-                
-                document.getElementById('confirm-yes').addEventListener('click', function() {
-                    // Clear chat and reload page
-                    window.location.href = '/';
-                });
-                
-                document.getElementById('confirm-cancel').addEventListener('click', function() {
-                    document.getElementById('confirm-modal').style.display = 'none';
-                });
                 
                 // AJAX form submission for initial query
                 const initialChatForm = document.querySelector('.chat-form');
@@ -230,10 +226,9 @@
                         const searchTypeInput = document.getElementById('search_type_input');
                         const isDeepSearch = searchTypeInput.value === 'deep';
                         const loadingText = isDeepSearch ? 'Researching in depth' : 'Generating response';
-                        
-                        // Create the loading HTML with the appropriate animation
+                          // Create the loading HTML with the appropriate animation
                         responseSection.innerHTML = `
-                            <div class="user-message">
+                            <div class="user-message initial-generation">
                                 <p>${queryText}</p>
                             </div>
                             <div class="ai-response-label">
@@ -315,16 +310,46 @@
                                 </div>
                             `;
                         }
-                        
-                        // Clear the textarea after submission
+                          // Clear the textarea after submission
                         textarea.value = '';
                     });
+                }
+                
+                // Function to set up modal buttons
+                function setupModalButtons() {
+                    const confirmYes = document.getElementById('confirm-yes');
+                    const confirmCancel = document.getElementById('confirm-cancel');
+                    
+                    if (confirmYes) {
+                        // Remove existing listeners by cloning
+                        const newConfirmYes = confirmYes.cloneNode(true);
+                        confirmYes.parentNode.replaceChild(newConfirmYes, confirmYes);
+                        
+                        newConfirmYes.addEventListener('click', function() {
+                            // Clear chat and reload page
+                            window.location.href = '/';
+                        });
+                    }
+                    
+                    if (confirmCancel) {
+                        // Remove existing listeners by cloning
+                        const newConfirmCancel = confirmCancel.cloneNode(true);
+                        confirmCancel.parentNode.replaceChild(newConfirmCancel, confirmCancel);
+                        
+                        newConfirmCancel.addEventListener('click', function() {
+                            document.getElementById('confirm-modal').style.display = 'none';
+                        });
+                    }
                 }
                 
                 // Function to set up follow-up forms
                 function setupFollowUpForms() {
                     document.querySelectorAll('.follow-up-form').forEach(form => {
-                        form.addEventListener('submit', async function(e) {
+                        // Remove existing event listeners to prevent duplicates
+                        const newForm = form.cloneNode(true);
+                        form.parentNode.replaceChild(newForm, form);
+                        
+                        newForm.addEventListener('submit', async function(e) {
                             e.preventDefault();
                             
                             const questionInput = this.querySelector('input[name="question"]');
@@ -332,52 +357,31 @@
                             
                             if (!question) return;
                             
-                            // Get the current chat history
-                            const chatHistory = document.querySelector('.chat-history');
+                            // Store the question before clearing the input
+                            const formData = new FormData(this);
+                              // Add loading animation to the form
+                            const submitButton = this.querySelector('button[type="submit"]');
+                            const originalButtonHTML = submitButton.innerHTML;
+                            submitButton.innerHTML = '<div class="follow-up-loading"></div>';
+                            submitButton.disabled = true;
+                            questionInput.disabled = true;
                             
-                            // Create a loading message
-                            const userMsg = document.createElement('div');
-                            userMsg.className = 'user-message';
-                            userMsg.innerHTML = `<p>${question}</p>`;
-                            
-                            const aiLabel = document.createElement('div');
-                            aiLabel.className = 'ai-response-label';
-                            aiLabel.innerHTML = '<p>AI Response</p>';
-                            
-                            const aiLoading = document.createElement('div');
-                            aiLoading.className = 'ai-loading';
-                            aiLoading.innerHTML = `
-                                Generating response
-                                <div class="loading-animation">
+                            // Add loading message to the response area
+                            const responseSection = document.querySelector('.response-section');
+                            const loadingDiv = document.createElement('div');
+                            loadingDiv.className = 'follow-up-response-loading';
+                            loadingDiv.innerHTML = `
+                                <span>Генерування відповіді</span>
+                                <div class="follow-up-loading-dots">
                                     <span class="loading-dot"></span>
                                     <span class="loading-dot"></span>
                                     <span class="loading-dot"></span>
                                 </div>
                             `;
-                            
-                            // If there's a chat history, append to it
-                            if (chatHistory) {
-                                chatHistory.appendChild(userMsg);
-                                chatHistory.appendChild(aiLabel);
-                                chatHistory.appendChild(aiLoading);
-                            } else {
-                                // If no chat history found, insert at top of response section
-                                const responseSection = document.querySelector('.response-section');
-                                if (responseSection) {
-                                    responseSection.prepend(aiLoading);
-                                    responseSection.prepend(aiLabel);
-                                    responseSection.prepend(userMsg);
-                                }
+                            if (responseSection) {
+                                responseSection.appendChild(loadingDiv);
                             }
                             
-                            // Scroll to the loading indicator
-                            aiLoading.scrollIntoView({ behavior: 'smooth' });
-                            
-                            // Clear the input
-                            questionInput.value = '';
-                            
-                            // Submit the follow-up question
-                            const formData = new FormData(this);
                             try {
                                 const response = await fetch('/ask', {
                                     method: 'POST',
@@ -386,55 +390,80 @@
                                 
                                 if (response.ok) {
                                     const html = await response.text();
+                                    
+                                    // Replace the entire page content
                                     const tempDiv = document.createElement('div');
                                     tempDiv.innerHTML = html;
                                     
-                                    // Replace the entire response section
-                                    const newResponseSection = tempDiv.querySelector('.response-section');
-                                    const currentResponseSection = document.querySelector('.response-section');
+                                    // Find the main content in the response
+                                    const newMain = tempDiv.querySelector('main');
+                                    const currentMain = document.querySelector('main');
                                     
-                                    if (newResponseSection && currentResponseSection) {
-                                        currentResponseSection.innerHTML = newResponseSection.innerHTML;
+                                    if (newMain && currentMain) {
+                                        currentMain.innerHTML = newMain.innerHTML;
                                         
                                         // Remove blue color from any links
-                                        const links = currentResponseSection.querySelectorAll('.gemini-response a');
+                                        const links = document.querySelectorAll('.gemini-response a');
                                         links.forEach(link => {
                                             link.style.color = 'inherit';
                                             link.style.textDecoration = 'underline';
                                             link.style.textDecorationColor = 'rgba(161, 161, 169, 0.3)';
                                         });
                                         
-                                        // Set up the new follow-up form
+                                        // Set up the new follow-up forms
                                         setupFollowUpForms();
                                         
-                                        // Scroll to the last message
-                                        const allMessages = currentResponseSection.querySelectorAll('.gemini-response');
-                                        if (allMessages.length > 0) {
-                                            allMessages[allMessages.length - 1].scrollIntoView({ behavior: 'smooth' });
+                                        // Scroll to the last response
+                                        const chatHistory = document.querySelector('.chat-history');
+                                        if (chatHistory) {
+                                            chatHistory.scrollTop = chatHistory.scrollHeight;
                                         }
+                                    }                                } else {
+                                    console.error('Server response error:', response.status, response.statusText);
+                                    alert('Сталася помилка при обробці запиту. Спробуйте ще раз.');
+                                    
+                                    // Remove loading animation
+                                    const loadingDiv = document.querySelector('.follow-up-response-loading');
+                                    if (loadingDiv) {
+                                        loadingDiv.remove();
                                     }
-                                } else {
-                                    // Replace loading with error
-                                    aiLoading.innerHTML = `
-                                        <div class="error">
-                                            An error occurred while processing your request. Please try again.
-                                        </div>
-                                    `;
+                                    
+                                    // Restore the form state
+                                    submitButton.innerHTML = originalButtonHTML;
+                                    submitButton.disabled = false;
+                                    questionInput.disabled = false;
+                                }                            } catch (error) {
+                                console.error('Request error:', error);
+                                alert('Помилка мережі. Перевірте з\'єднання та спробуйте ще раз.');
+                                
+                                // Remove loading animation
+                                const loadingDiv = document.querySelector('.follow-up-response-loading');
+                                if (loadingDiv) {
+                                    loadingDiv.remove();
                                 }
-                            } catch (error) {
-                                // Replace loading with error
-                                aiLoading.innerHTML = `
-                                    <div class="error">
-                                        Error: ${error.message}
-                                    </div>
-                                `;
+                                
+                                // Restore the form state
+                                submitButton.innerHTML = originalButtonHTML;
+                                submitButton.disabled = false;
+                                questionInput.disabled = false;
                             }
                         });
                     });
+                      // Set up clear chat buttons
+                    document.querySelectorAll('.clear-chat-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            document.getElementById('confirm-modal').style.display = 'flex';
+                        });
+                    });
+                    
+                    // Ensure modal buttons are working (re-setup after content changes)
+                    setupModalButtons();
                 }
-                
-                // Set up any existing follow-up forms
+                  // Set up any existing follow-up forms
                 setupFollowUpForms();
+                
+                // Set up modal buttons
+                setupModalButtons();
                 
                 // Style any existing links in gemini responses
                 const links = document.querySelectorAll('.gemini-response a');

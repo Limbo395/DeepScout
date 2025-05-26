@@ -62,23 +62,29 @@
             <ul class="visited-sites">
                 {% for page in pages %}
                     <li>
-                        <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
-                        <a href="{{ page.url }}" target="_blank">{{ page.title }}</a>
+                        {% if page.icon_url is string %}
+                            <img src="{{ page.icon_url }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                        {% else %}
+                            <img src="{{ page.icon_url or '/static/default-favicon.png' }}" alt="Favicon" width="16" height="16" onerror="this.src='/static/default-favicon.png';">
+                        {% endif %}
+                        <a href="{{ page.url }}" target="_blank">{{ page.title|default('Веб-сторінка без заголовка') }}</a>
                     </li>
                 {% endfor %}
             </ul>
         </div>
     {% endif %}
-    
-    <!-- Follow-up form inside the response section (appears only if there's a search ID) -->
+      <!-- Follow-up form inside the response section (appears only if there's a search ID) -->
     {% if search_id %}
         <div class="follow-up-container">
             <form action="/ask" method="post" class="follow-up-form">
                 <input type="hidden" name="search_id" value="{{ search_id }}">
-                <input type="hidden" name="search_type" value="{{ search_type }}">
-                <div class="input-group">
-                    <input type="text" name="question" placeholder="Ask a follow-up question..." required>
-                    <button type="submit">Ask</button>
+                <input type="hidden" name="search_type" value="{{ search_type }}">                <div class="input-group">                    <input type="text" name="question" placeholder="Ask a follow-up question..." required>
+                    <button type="button" class="clear-chat-btn" id="clear-chat" title="Clear conversation">
+                        <img src="{{ url_for('static', filename='clear.png') }}" alt="Clear">
+                    </button>
+                    <button type="submit" id="send-button">
+                        <span>➤</span>
+                    </button>
                 </div>
             </form>
         </div>
