@@ -13,26 +13,74 @@ from database import Search, WebPage
 
 logging.basicConfig(level=logging.INFO)
 
-def get_gemini_response(query, api_key, detailed=False):
+def get_gemini_response(query, api_key, detailed=False, context="", is_followup=False):
     if not api_key:
         return "Помилка: Не налаштовано API key для Gemini."
     
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.0-flash')
+        # Concise system prompt for short, direct responses
+        system_prompt = """Ти - DeepScout AI, компактний дослідницький асистент.
+
+СТИЛЬ ВІДПОВІДЕЙ:
+- Коротко і по суті
+- Лаконічно та зрозуміло
+- Тільки найважливіша інформація
+- Мінімум слів, максимум сенсу
+
+ПРИНЦИПИ:
+1. Відповідай тією ж мовою, що й запитання
+2. Надавай точну та актуальну інформацію
+3. Структуруй коротко (заголовки, списки)
+4. Фокусуйся на практичності
+
+ФОРМАТ:
+- Основна відповідь: 2-4 речення
+- Список ключових пунктів (якщо потрібно)
+- Конкретні факти без води
+
+ЗАБОРОНЕНО:
+- Довгі пояснення та розтягнуті тексти
+- Фрази "згідно з джерелами"
+- Надмірні деталі та контекст
+- Повторення та перефразування"""
+
+        if is_followup and context:
+            followup_prompt = f"""{system_prompt}
+
+РЕЖИМ FOLLOW-UP:
+Обробляєш додаткове питання в контексті розмови.
+
+КОНТЕКСТ: {context}
+
+АЛГОРИТМ:
+1. Перевір зв'язок з попередньою темою
+2. Якщо пов'язано - дай коротку відповідь у контексті
+3. Якщо не пов'язано - повідом про зміну теми та запропонуй нову розмову
+
+НОВЕ ПИТАННЯ: "{query}"
+
+Відповідь має бути короткою (1-3 речення)."""
+            query = followup_prompt
         
-        # Enhanced prompt for regular searches to provide more detailed responses
-        if detailed:
-            enhanced_query = f"""Надай детальну відповідь на запит: {query}
-            
-            Інструкції:
-            1. Визнач мову запиту і використовуй її у відповіді
-            2. Надай повну і детальну інформацію з різних сторін питання
-            3. Структуруй відповідь для кращого розуміння
-            4. Використовуй приклади, аналогії та пояснення, де це необхідно
-            5. Уникай надто коротких і поверхневих відповідей
-            """
+        elif detailed:
+            enhanced_query = f"""{system_prompt}
+
+РЕЖИМ ДЕТАЛЬНОГО АНАЛІЗУ:
+Надай структуровану відповідь з ключовими аспектами теми.
+
+ЗАПИТ: "{query}"
+
+СТРУКТУРА:
+1. Основна суть (2-3 речення)
+2. Ключові пункти (3-5 коротких пунктів)
+3. Практичні моменти (якщо є)
+
+Загальний обсяг: до 10 речень."""
             query = enhanced_query
+        else:
+            query = f"{system_prompt}\n\nЗАПИТ: {query}\n\nНадай точну та корисну відповідь."
         
         # Generate response
         response = model.generate_content(query)
@@ -44,19 +92,37 @@ def get_gemini_response(query, api_key, detailed=False):
 def generate_sub_queries(query, api_key, num_queries=5):
     """
     Generates related search queries using Gemini.
-    Improved prompt to generate more precise sub-queries.
+    Improved prompt to generate more precise sub-queries for web scraping.
     """
     if not api_key:
         return ["Помилка: Не налаштовано API key для Gemini."]
 
-    prompt = (
-        f"На основі запиту '{query}', створи {num_queries} пошукових запитів, які допоможуть зібрати вичерпну інформацію. "        f"Поверни ТІЛЬКИ список запитів без нумерації чи пояснень - по одному на рядок. "
-        f"Визнач мову запиту і використовуй ту саму мову."
-    )
+    system_prompt = """Ти - експерт з пошуку інформації в Інтернеті. Твоє завдання - створювати ефективні пошукові запити.
+
+ПРАВИЛА СТВОРЕННЯ ЗАПИТІВ:
+1. Визнач мову оригінального запиту і використовуй ту саму мову
+2. Створюй конкретні та цільові запити
+3. Уникай занадто загальних або занадто вузьких запитів
+4. Формулюй запити так, щоб знайти різні аспекти теми
+5. Включай синоніми та альтернативні формулювання
+6. Додавай запити для історичного контексту та сучасного стану
+
+ФОРМАТ ВІДПОВІДІ:
+- Повертай ТІЛЬКИ список запитів
+- По одному запиту на рядок
+- БЕЗ нумерації, тире або інших символів
+- БЕЗ пояснень або коментарів"""
+
+    prompt = f"""{system_prompt}
+
+ОРИГІНАЛЬНИЙ ЗАПИТ: "{query}"
+
+Створи {num_queries} різноманітних пошукових запитів, які допоможуть зібрати максимально повну інформацію про цю тему з різних джерел і perspectives."""
+
     sub_queries = get_gemini_response(prompt, api_key, detailed=False).splitlines()
     
     # Filter out any lines that might be empty or contain unwanted characters
-    filtered_queries = [q.strip() for q in sub_queries if q.strip()]
+    filtered_queries = [q.strip() for q in sub_queries if q.strip() and not q.strip().startswith(('•', '-', '*', '1.', '2.', '3.', '4.', '5.'))]
     return filtered_queries[:num_queries]
 
 def search_duckduckgo(query, num_results=10):
@@ -201,20 +267,32 @@ def perform_deep_search(query, api_key, session):
         max_content_length = 30000
         trimmed_content = all_content[:max_content_length] if len(all_content) > max_content_length else all_content
         
-        prompt = f"""Створи детальний аналітичний звіт на тему: "{query}"
+        system_prompt = """Ти - DeepScout AI, компактний аналітик.
 
-        Інструкції:
-        1. Визнач мову запиту і використовуй її у відповіді
-        2. Організуй інформацію в логічну структуру з розділами та підрозділами
-        3. Використовуй фактичну інформацію з наданих джерел
-        4. Аналізуй різні аспекти теми, включаючи визначення, історію, різновиди, поширені питання тощо
-        5. Уникай фраз типу "Згідно з наданою інформацією" або "На основі джерел"
-        6. Не використовуй кольорові гіперпосилання
-        7. Подавай інформацію об'єктивно, з увагою до деталей
-        8. Підготуй комплексний, інформативний та структурований звіт
-        
-        Інформація з джерел:
-        {trimmed_content}        """
+ЗАВДАННЯ: Створити короткий звіт на основі зібраної інформації.
+
+ПРИНЦИПИ:
+1. Аналізуй ТІЛЬКИ надану інформацію
+2. Структуруй коротко та зрозуміло
+3. Використовуй мову запиту
+4. Тільки ключові факти
+
+ФОРМАТ:
+- Основне (2-3 речення)
+- Ключові пункти (3-5 коротких)
+- Висновок (1 речення)
+
+ЗАБОРОНЕНО:
+- Фрази "згідно з джерелами"
+- Довгі пояснення
+- Повторення інформації"""
+
+        prompt = f"""{system_prompt}
+
+ТЕМА: "{query}"
+ЗІБРАНА ІНФОРМАЦІЯ: {trimmed_content}
+
+Створи компактний звіт з головними фактами."""
         
         try:
             gemini_report = get_gemini_response(prompt, api_key, detailed=False)
