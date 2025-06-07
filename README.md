@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![DeepScout Logo](static/brains.png)
+![DeepScout Logo](static/logo.png)
 
 **AI-Powered Search Application with Deep Research Capabilities**
 
